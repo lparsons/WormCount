@@ -73,13 +73,13 @@ overlay2 = imoverlay(I, worm_mask, [.3 1 .3]);
 
 
 %% Estimate worm size
-cc = bwconncomp(worm_mask, 4);
-wormdata = regionprops(cc, 'basic');
+%cc = bwconncomp(worm_mask, 4);
+wormdata = regionprops(bwlabel(worm_mask, 4), 'Area', 'PixelIdxList');
 worm_areas = [wormdata.Area];
 worm_size = median(worm_areas(worm_areas<max_worm_size));
 
 single_worms = false(size(worm_mask));
-single_worms(vertcat(cc.PixelIdxList{worm_areas<max_worm_size})) = true;
+single_worms(vertcat(wormdata(worm_areas<max_worm_size).PixelIdxList)) = true;
 RGB_label = label2rgb(bwlabel(single_worms,4), @lines, 'k', 'shuffle');
 
 %figure, imshow(single_worms);
