@@ -11,8 +11,9 @@ function [summary_results, all_results] = count_worms_directory(varargin)
 %           This is saved in a file named 'worm_counts_summary.csv' in the
 %           directory specified.
 %
-%       ALL_RESULTS is the same data, formatted in one row per image.  This
-%           is saved in a file named 'worm_counts_stats.csv'
+%       ALL_RESULTS outputs one row per image, indicating the treatment,
+%           trial number, the size of a worm, and the worm count.  This is
+%           saved in a file named 'worm_counts_stats.csv'.
 %
 %   [SUMMARY_RESULTS, ALL_RESULTS] = count_worms_directory(directory)
 %
@@ -21,13 +22,13 @@ function [summary_results, all_results] = count_worms_directory(varargin)
 %           default = 10
 %       maxsize - Regions smaller than max_size will be used to determine 
 %            the size of a single worm
-%           default = 100
+%           default = 80
 
 p = inputParser;
 p.FunctionName = 'count_worms_directory';
 p.addOptional('inputDir', '', @isdir);
 p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-p.addOptional('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p.addOptional('maxsize',80,@isnumeric); % Regions smaller than this will determine single worm size
 p.parse(varargin{:});
 min_worm_size = p.Results.minsize; 
 max_worm_size = p.Results.maxsize; 

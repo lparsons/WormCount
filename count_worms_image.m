@@ -1,9 +1,10 @@
 function [worm_size, num_worms] = count_worms_image(varargin)
 % COUNT_WORMS_IMAGE function analyzes an image and estimates worm count
-%   
+%
 %   [WORM_SIZE, NUM_WORMS] = count_worms_images() allows gui selection of
 %       image to analyze and allows the user to deselect erroneously
-%       identified regions.
+%       identified regions.  When finished selecting regions, press escape
+%       to continue.
 %
 %       WORM_SIZE is the estimated size of a single worm (in pixels)
 %
@@ -15,11 +16,11 @@ function [worm_size, num_worms] = count_worms_image(varargin)
 %   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize)
 %       minsize - Regions smaller than min_size will be discarded
 %           default = 10
-%       maxsize - Regions smaller than max_size will be used to determine 
+%       maxsize - Regions smaller than max_size will be used to determine
 %            the size of a single worm
-%           default = 100
+%           default = 80
 %
-%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize, debug) 
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize, debug)
 %       debug [0/1] flag outputs various image overlays
 %            default = 0 (off)
 
@@ -27,7 +28,7 @@ i_p = inputParser;
 i_p.FunctionName = 'count_worms_image';
 i_p.addOptional('filename','',@ischar);
 i_p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-i_p.addOptional('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+i_p.addOptional('maxsize',80,@isnumeric); % Regions smaller than this will determine single worm size
 i_p.addOptional('debug',0,@isnumeric);
 i_p.parse(varargin{:});
 
@@ -83,14 +84,20 @@ bw4 = bwareaopen(bw, min_worm_size, 4);
 
 %% Manual review
 reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
-mask = roipoly(reviewimg);
-while ~isempty(mask)
-    close;
+h_im = imshow(reviewimg);
+names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
+set(gcf, 'Name', names.filename);
+title('Select regions to ignore, press <ESC> when done');
+e = imrect(gca);
+while ~isempty(e)
+    mask = createMask(e,h_im);
     bw4(mask)=0;
     reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
-    mask = roipoly(reviewimg);
+    h_im = imshow(reviewimg);
+    title('Select regions to ignore, press <ESC> when done');
+    e = imrect(gca);
 end
-close;
+close gcf;
 
 %% Morphological closing (dilation followed by erosion).
 % bw5 = bwmorph(bw4, 'close');
