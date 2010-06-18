@@ -1,20 +1,52 @@
 function [worm_size, num_worms] = count_worms_image(varargin)
+% COUNT_WORMS_IMAGE function analyzes an image and estimates worm count
+%   
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images() allows gui selection of
+%       image to analyze and allows the user to deselect erroneously
+%       identified regions.
+%
+%       WORM_SIZE is the estimated size of a single worm (in pixels)
+%
+%       NUM_WORMS is the estimated number of worms in the image based on
+%           the worm_size.
+%
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename)
+%
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize)
+%       minsize - Regions smaller than min_size will be discarded
+%           default = 10
+%       maxsize - Regions smaller than max_size will be used to determine 
+%            the size of a single worm
+%           default = 100
+%
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize, debug) 
+%       debug [0/1] flag outputs various image overlays
+%            default = 0 (off)
 
 i_p = inputParser;
 i_p.FunctionName = 'count_worms_image';
-i_p.addRequired('filename',@ischar);
+i_p.addOptional('filename','',@ischar);
+i_p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+i_p.addOptional('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
 i_p.addOptional('debug',0,@isnumeric);
 i_p.parse(varargin{:});
 
-filename = i_p.Results.filename;
+
+if ( (isfield(i_p.Results,'filename')) && ~strcmp(i_p.Results.filename,''))
+    fullfilename = i_p.Results.filename;
+else
+    [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
+        '*.*','All Files' },'Select Image File');
+    fullfilename = [PathName, filesep, FileName];
+end
+
 debug = i_p.Results.debug;
+min_worm_size = i_p.Results.minsize;
+max_worm_size = i_p.Results.maxsize;
 
-
-min_worm_size = 10; % Regions smaller than this will be discarded
-max_worm_size = 100; % Regions smaller than this will determine single worm size
-
-image.info = imfinfo( filename );
-image.data = imread(filename);
+% Read in image
+image.info = imfinfo( fullfilename );
+image.data = imread(fullfilename);
 
 I = image.data;
 I_sc = mat2gray(I);
@@ -28,7 +60,7 @@ I_bsub = I_comp - background;
 %% Global image threshold using Otsu's method
 threshold = graythresh(I_bsub);
 threshold = max(threshold,.2); % Sanity check on threshold
-bw = im2bw(I_bsub, threshold); 
+bw = im2bw(I_bsub, threshold);
 
 
 %% Cleanup thresholded image
@@ -42,11 +74,23 @@ bw = im2bw(I_bsub, threshold);
 % morphOpenStruct = ones(2,2);
 % bw3 = imopen(bw, morphOpenStruct);
 
-%% Morphologically open binary image (remove small objects) < 40
+%% Morphologically open binary image (remove small objects) < min_worm_size
 %   Determine connected components (4 pixel neighborhood)
 %   Compute area of each component
 %   Remove those below specified value
 bw4 = bwareaopen(bw, min_worm_size, 4);
+
+
+%% Manual review
+reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
+mask = roipoly(reviewimg);
+while ~isempty(mask)
+    close;
+    bw4(mask)=0;
+    reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
+    mask = roipoly(reviewimg);
+end
+close;
 
 %% Morphological closing (dilation followed by erosion).
 % bw5 = bwmorph(bw4, 'close');
@@ -98,3 +142,7 @@ if (debug)
     figure, imshow(image.data);
 end
 
+function [mask] = getMask(image, objects)
+reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
+mask = roipoly(reviewimg);
+figure, imshow(mask);
