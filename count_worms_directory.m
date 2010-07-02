@@ -27,8 +27,8 @@ function [summary_results, all_results] = count_worms_directory(varargin)
 p = inputParser;
 p.FunctionName = 'count_worms_directory';
 p.addOptional('inputDir', '', @isdir);
-p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-p.addOptional('maxsize',80,@isnumeric); % Regions smaller than this will determine single worm size
+p.addOptional('minsize',15,@isnumeric); % Regions smaller than this will be discarded
+p.addOptional('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
 p.parse(varargin{:});
 min_worm_size = p.Results.minsize; 
 max_worm_size = p.Results.maxsize; 
