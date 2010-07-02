@@ -56,7 +56,7 @@ for i=1:size(trials,2)
     trial_results = {trials(i)};
     for t=1:size(types,2)
         disp([types{t} num2str(trials(i))]);
-        [worm_size, num_worms] = count_worms_image([input_dir filesep types{t} num2str(trials(i)) '.png'], 'minsize', min_worm_size, 'maxsize', max_worm_size);
+        [num_worms, worm_size] = count_worms_image([input_dir filesep types{t} num2str(trials(i)) '.png'], 'minsize', min_worm_size, 'maxsize', max_worm_size);
         all_results = vertcat(all_results, {types{t}, i, worm_size, num_worms});
         trial_results = horzcat(trial_results, num_worms);
     end

@@ -1,4 +1,4 @@
-function [worm_size, num_worms] = count_worms_image(varargin)
+function [num_worms, worm_size] = count_worms_image(varargin)
 % COUNT_WORMS_IMAGE function analyzes an image and estimates worm count
 %
 %   [WORM_SIZE, NUM_WORMS] = count_worms_images() allows gui selection of
@@ -49,41 +49,19 @@ max_worm_size = i_p.Results.maxsize;
 image.info = imfinfo( fullfilename );
 image.data = imread(fullfilename);
 
-I = image.data;
-I_sc = mat2gray(I);
-I_comp = imcomplement(I_sc);
+if ndims(image) > 2
+    I_gray = rgb2gray(image.data);
+else 
+    I_gray = mat2gray(image.data);
+end
 
-%% BG Substract
-background = imopen(I_comp,strel('disk',15));
-I_bsub = I_comp - background;
+%I_sc = imadjust(Ig,stretchlim(Ig),[0,1],.5);
 
-
-%% Global image threshold using Otsu's method
-threshold = graythresh(I_bsub);
-threshold = max(threshold,.2); % Sanity check on threshold
-bw = im2bw(I_bsub, threshold);
-
-
-%% Cleanup thresholded image
-%   Fill in holes - pixes that cannot be reached by filling in the
-%   background from the edge of the image (using 4 pixel neighborhood)
-% bw2 = imfill(bw,'holes');
-
-%% Morphological opening using a 5x5 block.  The morphological open
-% operation is an erosion followed by a dilation, using the same
-% structuring element for both operations.
-% morphOpenStruct = ones(2,2);
-% bw3 = imopen(bw, morphOpenStruct);
-
-%% Morphologically open binary image (remove small objects) < min_worm_size
-%   Determine connected components (4 pixel neighborhood)
-%   Compute area of each component
-%   Remove those below specified value
-bw4 = bwareaopen(bw, min_worm_size, 4);
 
 
 %% Manual review
-reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
+worm_mask = find_worms(I_gray, min_worm_size, max_worm_size);
+reviewimg = imoverlay(image.data, bwperim(bwmorph(worm_mask,'thicken',1)), [.3 .8 .3]);
 h_im = imshow(reviewimg);
 names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
 set(gcf, 'Name', names.filename);
@@ -91,8 +69,10 @@ title('Select regions to ignore, press <ESC> when done');
 e = imrect(gca);
 while ~isempty(e)
     mask = createMask(e,h_im);
-    bw4(mask)=0;
-    reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
+    %I_gray = roifill(I_gray, mask);
+    I_gray(mask)=median(I_gray(:));
+    worm_mask = find_worms(I_gray, min_worm_size, max_worm_size);
+    reviewimg = imoverlay(image.data, bwperim(bwmorph(worm_mask,'thicken',1)), [.3 .8 .3]);
     h_im = imshow(reviewimg);
     title('Select regions to ignore, press <ESC> when done');
     e = imrect(gca);
@@ -118,9 +98,8 @@ close gcf;
 % pixels have been replaced by a specified color.
 % MatLab Central -
 % http://www.mathworks.com/matlabcentral/fileexchange/10502
-worm_mask = bw4;
-overlay1 = imoverlay(I_bsub, bw, [.3 1 .3]);
-overlay2 = imoverlay(I, worm_mask, [.3 1 .3]);
+%overlay1 = imoverlay(I_bsub, bw, [.3 1 .3]);
+overlay2 = imoverlay(image.data, worm_mask, [.3 1 .3]);
 
 
 %% Estimate worm size
@@ -144,12 +123,80 @@ if (debug)
     
     figure, imshow(RGB_label);
     figure, imshow(overlay2);
-    figure, imshow(overlay1);
-    figure, imshow(I_bsub);
+    %figure, imshow(overlay1);
+    %figure, imshow(I_bsub);
     figure, imshow(image.data);
 end
 
-function [mask] = getMask(image, objects)
-reviewimg = imoverlay(I, bwperim(bw4), [.3 1 .3]);
-mask = roipoly(reviewimg);
-figure, imshow(mask);
+%figure, imshow(overlay2);
+end
+
+function [mask] = find_worms(image, min_worm_size, max_worm_size)
+
+mx = max(image(:));
+mn = min(image(:));
+df = mx-mn;
+fprintf('%d-%d = %d\n',mx,mn,df);
+
+% h = fspecial('unsharp');
+% I2 = imfilter(image,h);
+
+I_comp = imcomplement(image);
+
+%se = strel('disk',15);
+%I_comp = imsubtract(imadd(I_comp,imtophat(I_comp,se)), imbothat(I_comp,se));
+
+%% BG Substract
+% background = imopen(I_comp,strel('disk',15));
+% I_bsub = mat2gray(I_comp - background);
+I_bsub = mat2gray(imtophat(I_comp,strel('disk',15)));
+
+%% Contrast Enchance
+
+%I_adj = imadjust(I_bsub,stretchlim(I_bsub),[min(I_bsub(:)),max(I_bsub(:))],2);
+%I_sm = medfilt2(I_adj);
+%I_adj = imadjust(I_bsub,[],[0,1],1);
+
+se = strel(ones(size(I_bsub)));
+%I_sm = wiener2(I_bsub,[10,10]);
+
+%I_adj = imsubtract(imadd(I_bsub,imtophat(I_bsub,se)), imbothat(I_bsub,se));
+%I_adj = adapthisteq(I_bsub);
+%I_adj = imadjust(I_bsub);
+
+I_adj = I_bsub;
+
+%% Global image threshold using Otsu's method
+threshold = graythresh(I_adj);
+%threshold = max(threshold,.2); % Sanity check on threshold
+bw = im2bw(I_adj, threshold);
+%
+% [bw, threshold] = edge(I_adj,'canny');
+%
+% bw2 = imfill(bw,'holes');
+%bw2 = imclose(bw, strel('disk', 10));
+
+%bw = imextendedmax(I_adj,.99,8);
+bw = im2bw(I_adj, .2);
+
+bw2 = bwmorph(bw,'close');
+
+%% Cleanup thresholded image
+%   Fill in holes - pixes that cannot be reached by filling in the
+%   background from the edge of the image (using 4 pixel neighborhood)
+% bw2 = imfill(bw,'holes');
+
+%% Morphological opening using a 5x5 block.  The morphological open
+% operation is an erosion followed by a dilation, using the same
+% structuring element for both operations.
+% morphOpenStruct = ones(2,2);
+% bw3 = imopen(bw, morphOpenStruct);
+
+%% Morphologically open binary image (remove small objects) < min_worm_size
+%   Determine connected components (4 pixel neighborhood)
+%   Compute area of each component
+%   Remove those below specified value
+mask = bwareaopen(bw, min_worm_size, 4);
+
+
+end
