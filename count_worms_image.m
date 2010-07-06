@@ -59,8 +59,7 @@ end
 
 %% Setup figure
 names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
-review_fig = figure('Name', names.filename,'MenuBar','none',...
-   'ToolBar','none');
+review_fig = figure('Name', names.filename,'MenuBar','none','ToolBar','none');
 plot_fig(image.data, 1);
 title('Original Image');
 
@@ -83,7 +82,7 @@ while ~isempty(e)
     
     I_gray(mask)=bg(mask);
     
-    [worm_mask, bg] = find_worms(I_gray, min_worm_size, max_worm_size);
+    [worm_mask, bg] = find_worms(I_gray, min_worm_size);
     
     %reviewimg = imoverlay(I_gray, bwperim(bwmorph(worm_mask,'thicken',1)), [.3 .8 .3]);
     reviewimg = imoverlay(image.data, bwperim(bwmorph(worm_mask,'thicken',1)), [.3 .8 .3]);
