@@ -59,7 +59,8 @@ end
 
 %% Setup figure for manual review
 names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
-review_fig = figure('Name', names.filename,'MenuBar','none','ToolBar','none');
+%review_fig = figure('Name', names.filename,'MenuBar','none','ToolBar','none');
+review_fig = figure();
 plot_fig(image.data, 1);
 title('Original Image');
 
