@@ -11,34 +11,76 @@ function [num_worms, worm_size] = count_worms_image(varargin)
 %       NUM_WORMS is the estimated number of worms in the image based on
 %           the worm_size.
 %
-%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename)
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images([filename OR image_data])
 %
-%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize)
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images([filename OR image_data], minsize, maxsize)
 %       minsize - Regions smaller than min_size will be discarded
 %           default = 10
 %       maxsize - Regions smaller than max_size will be used to determine
 %            the size of a single worm
 %           default = 80
 %
-%   [WORM_SIZE, NUM_WORMS] = count_worms_images(filename, minsize, maxsize, debug)
+%   [WORM_SIZE, NUM_WORMS] = count_worms_images([filename OR image_data], minsize, maxsize, debug)
 %       debug [0/1] flag outputs various image overlays
 %            default = 0 (off)
 
 %% Parse arguments
-i_p = inputParser;
-i_p.FunctionName = 'count_worms_image';
-i_p.addOptional('filename','',@ischar);
-i_p.addOptional('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-i_p.addOptional('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
-i_p.addOptional('debug',0,@isnumeric);
-i_p.parse(varargin{:});
+p1 = inputParser;
+p1.FunctionName = 'count_worms_image';
+p1.addOptional('image_data',0,@isnumeric);
+p1.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
+p1.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p1.addParamValue('debug',0,@isnumeric);
 
-if ( (isfield(i_p.Results,'filename')) && ~strcmp(i_p.Results.filename,''))
-    fullfilename = i_p.Results.filename;
+p2 = inputParser;
+p2.FunctionName = 'count_worms_image';
+p2.addOptional('filename','',@ischar);
+p2.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
+p2.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p2.addParamValue('debug',0,@isnumeric);
+
+p3 = inputParser;
+p3.FunctionName = 'count_worms_image';
+p3.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
+p3.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p3.addParamValue('debug',0,@isnumeric);
+
+try
+    p1.parse(varargin{:})
+    i_p = p1;
+catch e1
+    try
+        p2.parse(varargin{:})
+        i_p = p2;
+    catch e2
+        try 
+            p3.parse(varargin{:})
+            i_p = p3;
+        catch e3
+            
+            exception = MException(...
+                'count_worms_plate:arglist',...
+                'Error in input argument list');
+            exception = addCause(exception, e1);
+            exception = addCause(exception, e2);
+            exception = addCause(exception, e3);
+            throw(exception)
+        end
+    end
+end
+
+if ( isfield(i_p.Results,'image_data') && ~strcmp(i_p.Results.image_data,0))
+    image.data = i_p.Results.image_data;
 else
-    [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
-        '*.*','All Files' },'Select Image File');
-    fullfilename = [PathName, filesep, FileName];
+    if ( (isfield(i_p.Results,'filename')) && ~strcmp(i_p.Results.filename,''))
+        fullfilename = i_p.Results.filename;
+    else
+        [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
+            '*.*','All Files' },'Select Image File');
+        fullfilename = [PathName, filesep, FileName];
+    end
+    image.info = imfinfo( fullfilename );
+    image.data = imread(fullfilename);
 end
 
 debug = i_p.Results.debug;
@@ -48,9 +90,7 @@ max_worm_size = i_p.Results.maxsize;
 % Set Highlight Color
 highlightColor = [0 .5 0];
 
-%% Read in image, convert to grayscale
-image.info = imfinfo( fullfilename );
-image.data = imread(fullfilename);
+%% Convert to grayscale
 if ndims(image.data) > 2
     I_gray = rgb2gray(image.data);
 else
@@ -58,22 +98,27 @@ else
 end
 
 %% Setup figure for manual review
-names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
+%names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
 %review_fig = figure('Name', names.filename,'MenuBar','none','ToolBar','none');
-review_fig = figure();
-plot_fig(image.data, 1);
-title('Original Image');
+review_fig = figure('Visible', 'off');
+review_ax = gca;
+%plot_fig(image.data, 1);
+%title('Original Image');
 
 % Find worms
 [worm_mask, bg] = find_worms(I_gray, min_worm_size);
 
 % Show review image
 reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
-subplot(1,2,2);
-[of, h_im] = plot_fig(reviewimg, 2);
-truesize(review_fig);
-movegui(review_fig,'center')
+%subplot(1,2,2);
+%[of, h_im] = plot_fig(reviewimg, 2);
+%[of, h_im] = plot_fig_2(reviewimg);
+h_im = imshow(reviewimg, 'Parent', review_ax);
+set(gcf, 'Position', get(0,'Screensize'));  % Maximize view
+%truesize(review_fig); % 100% size view
+%movegui(review_fig,'center')
 title('Select regions to ignore, press <ESC> when done');
+set(review_fig, 'Visible', 'on')
 e = imrect(gca);
 
 %% Looping manual review
@@ -94,7 +139,8 @@ while ~isempty(e)
     % MatLab Central -
     % http://www.mathworks.com/matlabcentral/fileexchange/10502
     reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
-    [of, h_im] = plot_fig(reviewimg, 2);
+    %[of, h_im] = plot_fig(reviewimg, 2);
+    h_im = imshow(reviewimg, 'Parent', review_ax);
     title('Select regions to ignore, press <ESC> when done');
     e = imrect(gca);
 end
@@ -150,6 +196,15 @@ else
     
 end
 set(of, 'pos', p);
+end
+
+
+function [f i] = plot_fig_2(image)
+f = figure('Visible', 'off');
+i = imshow(image);
+set(f, 'Position', get(0,'Screensize'));  % Maximize view
+title('Select regions to ignore, press <ESC> when done');
+set(f, 'Visible', 'on');
 end
 
 % find_worms function identifies dark worms in image
