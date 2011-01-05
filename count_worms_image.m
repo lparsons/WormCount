@@ -27,14 +27,14 @@ function [num_worms, worm_size] = count_worms_image(varargin)
 %% Parse arguments
 p1 = inputParser;
 p1.FunctionName = 'count_worms_image';
-p1.addOptional('image_data',0,@isnumeric);
+p1.addRequired('image_data',@isnumeric);
 p1.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
 p1.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('debug',0,@isnumeric);
 
 p2 = inputParser;
 p2.FunctionName = 'count_worms_image';
-p2.addOptional('filename','',@ischar);
+p2.addRequired('filename',@ischar);
 p2.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
 p2.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('debug',0,@isnumeric);
@@ -44,6 +44,7 @@ p3.FunctionName = 'count_worms_image';
 p3.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
 p3.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
 p3.addParamValue('debug',0,@isnumeric);
+p3.addParamValue('worm_mask',0,@islogical);
 
 try
     p1.parse(varargin{:})
@@ -53,7 +54,7 @@ catch e1
         p2.parse(varargin{:})
         i_p = p2;
     catch e2
-        try 
+        try
             p3.parse(varargin{:})
             i_p = p3;
         catch e3
@@ -69,83 +70,30 @@ catch e1
     end
 end
 
-if ( isfield(i_p.Results,'image_data') && ~strcmp(i_p.Results.image_data,0))
-    image.data = i_p.Results.image_data;
-else
-    if ( (isfield(i_p.Results,'filename')) && ~strcmp(i_p.Results.filename,''))
-        fullfilename = i_p.Results.filename;
-    else
-        [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
-            '*.*','All Files' },'Select Image File');
-        fullfilename = [PathName, filesep, FileName];
-    end
-    image.info = imfinfo( fullfilename );
-    image.data = imread(fullfilename);
-end
-
+%% Get image data and find worms
 debug = i_p.Results.debug;
 min_worm_size = i_p.Results.minsize;
 max_worm_size = i_p.Results.maxsize;
 
-% Set Highlight Color
-highlightColor = [0 .5 0];
+if isfield(i_p.Results,'worm_mask') && islogical(i_p.Results.worm_mask)
 
-%% Convert to grayscale
-if ndims(image.data) > 2
-    I_gray = rgb2gray(image.data);
+    worm_mask = i_p.Results.worm_mask;
 else
-    I_gray = mat2gray(image.data);
+    if ( isfield(i_p.Results,'image_data') && ~strcmp(i_p.Results.image_data,0))
+        image.data = i_p.Results.image_data;
+    else
+        if ( (isfield(i_p.Results,'filename')) && ~strcmp(i_p.Results.filename,''))
+            fullfilename = i_p.Results.filename;
+        else
+            [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
+                '*.*','All Files' },'Select Image File');
+            fullfilename = [PathName, filesep, FileName];
+        end
+        image.info = imfinfo( fullfilename );
+        image.data = imread(fullfilename);
+    end
+    worm_mask = find_worms_image(image.data, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', i_p.Results.debug);
 end
-
-%% Setup figure for manual review
-%names = regexp(image.info.Filename,'(?<path>.*)/(?<filename>.*)','names');
-%review_fig = figure('Name', names.filename,'MenuBar','none','ToolBar','none');
-review_fig = figure('Visible', 'off');
-review_ax = gca;
-%plot_fig(image.data, 1);
-%title('Original Image');
-
-% Find worms
-[worm_mask, bg] = find_worms(I_gray, min_worm_size);
-
-% Show review image
-reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
-%subplot(1,2,2);
-%[of, h_im] = plot_fig(reviewimg, 2);
-%[of, h_im] = plot_fig_2(reviewimg);
-h_im = imshow(reviewimg, 'Parent', review_ax);
-set(gcf, 'Position', get(0,'Screensize'));  % Maximize view
-%truesize(review_fig); % 100% size view
-%movegui(review_fig,'center')
-title('Select regions to ignore, press <ESC> when done');
-set(review_fig, 'Visible', 'on')
-e = imrect(gca);
-
-%% Looping manual review
-while ~isempty(e)
-    
-    % Replace selected regions with estimation of background
-    mask = createMask(e,h_im);
-    I_gray(mask) = bg(mask);
-    
-    % Reanalyze - esp useful when very dark regions are removed from the
-    % image, allowing the algorithm to find the lighter worms
-    [worm_mask, bg] = find_worms(I_gray, min_worm_size);
-    
-    % Setup and review results
-    % The function IMOVERLAY creates a mask-based image overlay. It takes input
-    % image and a binary mask, and it produces an output image whose masked
-    % pixels have been replaced by a specified color.
-    % MatLab Central -
-    % http://www.mathworks.com/matlabcentral/fileexchange/10502
-    reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
-    %[of, h_im] = plot_fig(reviewimg, 2);
-    h_im = imshow(reviewimg, 'Parent', review_ax);
-    title('Select regions to ignore, press <ESC> when done');
-    e = imrect(gca);
-end
-close gcf;
-
 
 
 %% Estimate single worm size
@@ -177,70 +125,3 @@ end
 
 end
 
-
-% plot_fig function plots a subimage for manual review
-%
-%   [SUBPLOT_HANDLE, IMAGE_HANDLE] = plot_fig(image, loc) 
-%       Plots 'image' in a subplot at location loc
-function [of, im] = plot_fig(image, loc)
-of = subplot(1,2,loc); im = subimage(image);
-set(of,'xtick',[],'ytick',[]);
-p = get(of, 'pos');
-if loc==1
-    p(1) = p(1) - 0.05;
-    p(3) = p(3) + 0.1;
-    
-else
-    p(1) = p(1) - 0.05;
-    p(3) = p(3) + 0.1;
-    
-end
-set(of, 'pos', p);
-end
-
-
-function [f i] = plot_fig_2(image)
-f = figure('Visible', 'off');
-i = imshow(image);
-set(f, 'Position', get(0,'Screensize'));  % Maximize view
-title('Select regions to ignore, press <ESC> when done');
-set(f, 'Visible', 'on');
-end
-
-% find_worms function identifies dark worms in image
-%
-%   [MASK, BG] = plot_fig(image, min_worm_size) 
-%       Finds worms larger than min_worm_size in image
-%       MASK = Logical matrix indicating pixels corresponding to dark areas
-%           (worms)
-%       BG = Esitmated background of image (from tophat transform)
-function [mask, bg] = find_worms(image, min_worm_size)
-
-%% Complement of image
-I_comp = imcomplement(image);
-
-%% BG Substract
-I_bsub = imtophat(I_comp,strel('disk',15));
-bg = imcomplement(I_comp - I_bsub);
-
-%% Enhance
-
-% Noise removal
-I_adj = wiener2(I_bsub,[5 5]);
-
-% Gamma correction
-I_adj = imadjust(I_adj, [], [], 1.2);
-
-%% Global image threshold using Otsu's method
-threshold = graythresh(I_adj);
-threshold = max(threshold,.04); % Sanity check on threshold
-bw = im2bw(I_adj, threshold);
-
-%% Morphologically open binary image (remove small objects) < min_worm_size
-%   Determine connected components (4 pixel neighborhood)
-%   Compute area of each component
-%   Remove those below specified value
-mask = bwareaopen(bw, min_worm_size, 4);
-
-
-end

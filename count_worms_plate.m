@@ -29,6 +29,7 @@ p1.addOptional('filename', '', @ischar);
 p1.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
 p1.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
+p1.addParamValue('split_total',0,@isnumeric); % If true, split total image into four smaller images
 p1.addParamValue('debug',0,@isnumeric);
 
 % No image specified, select using GUI
@@ -89,42 +90,88 @@ I_comp = imcomplement(image.data);
 I_bsub = imtophat(I_comp,strel('disk',15));
 bg = imcomplement(I_comp - I_bsub);
 
-% Set total image
-cropped_images.tot = image.data;
-cropped_images.tot(~mask) = median(cropped_images.tot(mask));
-imshow(cropped_images.tot)
+% Grey out unmasked area
+masked_total = image.data;
+masked_total(~mask) = median(image.data(mask));
+
+% Crop image
+mask_props = regionprops(mask, 'BoundingBox');
+masked_total = imcrop(masked_total, mask_props.BoundingBox);
+image_handle = imshow(masked_total);
+set(plate_fig, 'Position', get(0,'Screensize')); % Maximize figure
+
+%% Setup total image(s)
+cropped_images.tot = {};
+if p.Results.split_total
+    w = floor(size(masked_total,1)/2);
+    h = floor(size(masked_total,2)/2);
+    cropped_images.tot{1} = masked_total(1:h,1:w);
+    cropped_images.tot{2} = masked_total(1:h,w+1:end);
+    cropped_images.tot{3} = masked_total(h+1:end,1:w);
+    cropped_images.tot{4} = masked_total(h+1:end,w+1:end);
+else
+    cropped_images.tot{1} = masked_total;
+end
 
 
 %% Choose area for each treatment from plate image
-image_handle = imshow(cropped_images.tot);
-set(gcf, 'Position', get(0,'Screensize')); % Maximize figure
-
-types = {'eth', 'but', 'ori', 'tot'};
+types = {'eth', 'but', 'ori'};
 selected_points = zeros(size(types,2),2);
 roi_width = p.Results.area_width;
-for t=1:size(types,2)-1
+for t=1:size(types,2)
     disp(types{t})
     title(sprintf('Select center of %s area', types{t}))
     [x,y] = ginput(1);
     selected_points(t,:) = [x,y];
     box = [x-(roi_width/2) y-(roi_width/2) roi_width roi_width];
     hold on
-    rectangle('Position', box, 'EdgeColor', 'r')
-    text(box(1), box(2), types{t}, 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom')
+    rectangle('Position', box, 'Curvature', [1,1], 'EdgeColor', 'r')
+    text(x, y, types{t}, 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom')
     hold off
-    cropped_images.(types{t}) = imcrop(cropped_images.tot, box);
+    cropped_images.(types{t}) = imcrop(masked_total, box);
 end
 close(plate_fig)
 
 
-%% For each treatment, analyze area around each selected center
-plate_results = {};
-all_results = {};
-for t=1:size(types,2)
-    img = cropped_images.(types{t});
-    [num_worms, worm_size] = count_worms_image(img, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
-    all_results = vertcat(all_results, {types{t}, worm_size, num_worms});
-    plate_results = horzcat(plate_results, num_worms);
+%% Mask areas on total image(s)
+masks = {};
+for i=1:size(cropped_images.tot,2)
+    img = cropped_images.tot{i};
+    masks{i} = find_worms_image(img, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
+end
+full_mask = false(size(masked_total));
+if p.Results.split_total
+    w = floor(size(masked_total,1)/2);
+    h = floor(size(masked_total,2)/2);
+    full_mask(1:h,1:w) = masks{1};
+    full_mask(1:h,w+1:end) = masks{2};
+    full_mask(h+1:end,1:w) = masks{3};
+    full_mask(h+1:end,w+1:end) = masks{4};
+else
+    full_mask = masks{1};
 end
 
-plate_results = vertcat({'Eth', 'But', 'Ori', 'Tot'}, plate_results);
+%% Count worms on total image
+[total_num_worms, total_worm_size] = count_worms_image('worm_mask', full_mask, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
+all_results = {'tot', total_worm_size, total_num_worms};
+
+%% For each treatment, analyze area around each selected center
+plate_results = {};
+imshow(imoverlay(masked_total, bwperim(full_mask), [0 .5 0]))
+set(gcf, 'Position', get(0,'Screensize')); % Maximize figure
+for t=1:size(types,2)
+    xy = selected_points(t,:);
+    box = [xy(1)-(roi_width/2) xy(2)-(roi_width/2) roi_width roi_width];
+    region_handle = imellipse(gca, box);
+    region_mask = createMask(region_handle);
+    delete(region_handle)
+    region_worm_mask = region_mask & full_mask;
+    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
+    all_results = vertcat(all_results, {types{t}, worm_size, num_worms});
+    plate_results = horzcat(plate_results, num_worms);
+    rectangle('Position', box, 'Curvature', [1,1], 'EdgeColor', 'r')
+    text(xy(1), xy(2), [types{t}, '-', num2str(num_worms)], 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center')
+end
+text(floor(size(masked_total,1)/2), 30, ['Total -', num2str(total_num_worms)], 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center')
+
+plate_results = vertcat({'Eth', 'But', 'Ori', 'Tot'}, [plate_results, total_num_worms]);

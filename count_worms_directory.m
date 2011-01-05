@@ -39,6 +39,19 @@ else
     input_dir = uigetdir([],'Select Directory');
 end
 
+
+% Get list of files
+plate_images = dir([input_dir filesep '*.png']);
+trail_data = [];
+for i=1:size(but_images,1)
+    t = regexpi(but_images(i).name, 'but([0-9]+).png', 'tokens');
+    n = str2double(t{1});
+    trial_data = [trials, n];
+end
+
+
+%% OLD CODE
+
 but_images = dir([input_dir filesep 'but*.png']);
 trials = [];
 for i=1:size(but_images,1)
