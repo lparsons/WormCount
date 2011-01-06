@@ -1,26 +1,27 @@
-function [plate_results, all_results] = count_worms_plate(varargin)
+function plate_results = count_worms_plate(varargin)
 % COUNT_WORMS_PLATE analyzes an image of a full plate estimates worm count
 % for each of four locations on the plate
 %   
-%   [PLATE_RESULTS, ALL_RESULTS] = count_worms_plate() allows gui
+%   PLATE_RESULTS = count_worms_plate() allows gui
 %       selection of the pate image file to analyze.
 %
-%       PLATE_RESULTS is a 1x4 cell array with the counts for each
-%       treatment
+%       PLATE_RESULTS is a 1x5 cell array with the estimated worm size and
+%       the worm counts for each treatment
 %
-%       ALL_RESULTS outputs one row per treatment, indicating the treatment,
-%           the size of a worm, and the worm count.
+%   PLATE_RESULTS = count_worms_plate(filename)
 %
-%   [SUMMARY_RESULTS, ALL_RESULTS] = count_worms_plate(filename)
+%   PLATE_RESULTS = count_worms_directory(filename, param_name, param_value, ...)
 %
-%   [SUMMARY_RESULTS, ALL_RESULTS] = count_worms_directory(filename, minsize, maxsize, area_width)
+%   Parameters:
 %       minsize - Regions smaller than min_size will be discarded
-%           default = 10
+%           default = 5
 %       maxsize - Regions smaller than max_size will be used to determine 
 %            the size of a single worm
-%           default = 80
+%           default = 30
 %       area_width - Width of the area around each treatment (in pixels)
 %           default = 300
+%       split_total - If true, split total image into four smaller images
+%       debug - if true then output debug info
 
 % Image specified
 p1 = inputParser;
@@ -29,7 +30,7 @@ p1.addOptional('filename', '', @ischar);
 p1.addParamValue('minsize',5,@isnumeric); % Regions smaller than this will be discarded
 p1.addParamValue('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
-p1.addParamValue('split_total',0,@isnumeric); % If true, split total image into four smaller images
+p1.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p1.addParamValue('debug',0,@isnumeric);
 
 % No image specified, select using GUI
@@ -37,7 +38,7 @@ p2 = inputParser;
 p2.addParamValue('minsize',5,@isnumeric); % Regions smaller than this will be discarded
 p2.addParamValue('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
-p2.addParamValue('split_total',0,@isnumeric); % If true, split total image into four smaller images
+p2.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p2.addParamValue('debug',0,@isnumeric);
 
 try
@@ -175,4 +176,4 @@ for t=1:size(types,2)
 end
 text(floor(size(masked_total,1)/2), 30, ['Total -', num2str(total_num_worms)], 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center')
 
-plate_results = vertcat({'Eth', 'But', 'Ori', 'Tot'}, [plate_results, total_num_worms]);
+plate_results = [total_worm_size, plate_results, total_num_worms];
