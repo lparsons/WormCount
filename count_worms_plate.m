@@ -26,17 +26,18 @@ function [plate_results, all_results] = count_worms_plate(varargin)
 p1 = inputParser;
 p1.FunctionName = 'count_worms_plate';
 p1.addOptional('filename', '', @ischar);
-p1.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p1.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p1.addParamValue('minsize',5,@isnumeric); % Regions smaller than this will be discarded
+p1.addParamValue('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
 p1.addParamValue('split_total',0,@isnumeric); % If true, split total image into four smaller images
 p1.addParamValue('debug',0,@isnumeric);
 
 % No image specified, select using GUI
 p2 = inputParser;
-p2.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p2.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p2.addParamValue('minsize',5,@isnumeric); % Regions smaller than this will be discarded
+p2.addParamValue('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
+p2.addParamValue('split_total',0,@isnumeric); % If true, split total image into four smaller images
 p2.addParamValue('debug',0,@isnumeric);
 
 try
@@ -166,7 +167,7 @@ for t=1:size(types,2)
     region_mask = createMask(region_handle);
     delete(region_handle)
     region_worm_mask = region_mask & full_mask;
-    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
+    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'avg_worm_size', total_worm_size, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
     all_results = vertcat(all_results, {types{t}, worm_size, num_worms});
     plate_results = horzcat(plate_results, num_worms);
     rectangle('Position', box, 'Curvature', [1,1], 'EdgeColor', 'r')
