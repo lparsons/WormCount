@@ -14,10 +14,10 @@ function plate_results = count_worms_plate(varargin)
 %
 %   Parameters:
 %       minsize - Regions smaller than min_size will be discarded
-%           default = 5
+%           default = 10
 %       maxsize - Regions smaller than max_size will be used to determine 
 %            the size of a single worm
-%           default = 30
+%           default = 40
 %       area_width - Width of the area around each treatment (in pixels)
 %           default = 300
 %       split_total - If true, split total image into four smaller images
@@ -27,16 +27,16 @@ function plate_results = count_worms_plate(varargin)
 p1 = inputParser;
 p1.FunctionName = 'count_worms_plate';
 p1.addOptional('filename', '', @ischar);
-p1.addParamValue('minsize',5,@isnumeric); % Regions smaller than this will be discarded
-p1.addParamValue('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
+p1.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p1.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
 p1.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p1.addParamValue('debug',0,@isnumeric);
 
 % No image specified, select using GUI
 p2 = inputParser;
-p2.addParamValue('minsize',5,@isnumeric); % Regions smaller than this will be discarded
-p2.addParamValue('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
+p2.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p2.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
 p2.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p2.addParamValue('debug',0,@isnumeric);

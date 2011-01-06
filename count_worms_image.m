@@ -18,7 +18,7 @@ function [num_worms, worm_size] = count_worms_image(varargin)
 %           default = 10
 %       maxsize - Regions smaller than max_size will be used to determine
 %            the size of a single worm
-%           default = 80
+%           default = 40
 %
 %   [WORM_SIZE, NUM_WORMS] = count_worms_images([filename OR image_data], minsize, maxsize, debug)
 %       debug [0/1] flag outputs various image overlays
@@ -28,23 +28,23 @@ function [num_worms, worm_size] = count_worms_image(varargin)
 p1 = inputParser;
 p1.FunctionName = 'count_worms_image';
 p1.addRequired('image_data',@isnumeric);
-p1.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p1.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p1.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p1.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('avg_worm_size',0,@isnumeric); % Use predetermined worm size
 p1.addParamValue('debug',0,@isnumeric);
 
 p2 = inputParser;
 p2.FunctionName = 'count_worms_image';
 p2.addRequired('filename',@ischar);
-p2.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p2.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p2.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p2.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('avg_worm_size',0,@isnumeric); % Use predetermined worm size
 p2.addParamValue('debug',0,@isnumeric);
 
 p3 = inputParser;
 p3.FunctionName = 'count_worms_image';
-p3.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p3.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p3.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p3.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p3.addParamValue('debug',0,@isnumeric);
 p3.addParamValue('avg_worm_size',0,@isnumeric); % Use predetermined worm size
 p3.addParamValue('worm_mask',0,@islogical);
@@ -100,7 +100,7 @@ end
 
 
 %% Estimate single worm size
-wormdata = regionprops(bwlabel(worm_mask, 4), 'Area', 'PixelIdxList');
+wormdata = regionprops(bwlabel(worm_mask, 8), 'Area', 'PixelIdxList');
 worm_areas = [wormdata.Area];
 worm_size = i_p.Results.avg_worm_size;
 if worm_size == 0
@@ -119,7 +119,7 @@ if (debug)
     % Single worm image for debugging
     single_worms = false(size(worm_mask));
     single_worms(vertcat(wormdata(worm_areas<max_worm_size).PixelIdxList)) = true;
-    RGB_label = label2rgb(bwlabel(single_worms,4), @lines, 'k', 'shuffle');
+    RGB_label = label2rgb(bwlabel(single_worms,8), @lines, 'k', 'shuffle');
     
     % Display images and debug info
     fprintf('Estimated size of one worm: %.2f\n', worm_size);

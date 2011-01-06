@@ -18,10 +18,10 @@ function summary_results = count_worms_directory(varargin)
 %
 %   Parameters:
 %       minsize - Regions smaller than min_size will be discarded
-%           default = 5
+%           default = 10
 %       maxsize - Regions smaller than max_size will be used to determine 
 %            the size of a single worm
-%           default = 30
+%           default = 40
 %       area_width - Width of the area around each treatment (in pixels)
 %           default = 300
 %       split_total - If true, split total image into four smaller images
@@ -31,8 +31,8 @@ function summary_results = count_worms_directory(varargin)
 p = inputParser;
 p.FunctionName = 'count_worms_directory';
 p.addOptional('inputDir', '', @isdir);
-p.addOptional('minsize',5,@isnumeric); % Regions smaller than this will be discarded
-p.addOptional('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
+p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p.addOptional('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
 p.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p.addParamValue('debug',0,@isnumeric);

@@ -11,10 +11,10 @@ function worm_mask = find_worms_image(varargin)
 %
 %   WORM_MASK = count_worms_images([filename OR image_data], minsize, maxsize)
 %       minsize - Regions smaller than min_size will be discarded
-%           default = 10
+%           default = 5
 %       maxsize - Regions smaller than max_size will be used to determine
 %            the size of a single worm
-%           default = 80
+%           default = 40
 %
 %   WORM_MASK = count_worms_images([filename OR image_data], minsize, maxsize, debug)
 %       debug [0/1] flag outputs various image overlays
@@ -24,21 +24,21 @@ function worm_mask = find_worms_image(varargin)
 p1 = inputParser;
 p1.FunctionName = 'count_worms_image';
 p1.addOptional('image_data',0,@isnumeric);
-p1.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p1.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p1.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p1.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('debug',0,@isnumeric);
 
 p2 = inputParser;
 p2.FunctionName = 'count_worms_image';
 p2.addOptional('filename','',@ischar);
-p2.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p2.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p2.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p2.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('debug',0,@isnumeric);
 
 p3 = inputParser;
 p3.FunctionName = 'count_worms_image';
-p3.addParamValue('minsize',15,@isnumeric); % Regions smaller than this will be discarded
-p3.addParamValue('maxsize',100,@isnumeric); % Regions smaller than this will determine single worm size
+p3.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
+p3.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p3.addParamValue('debug',0,@isnumeric);
 
 try
@@ -126,7 +126,7 @@ while ~isempty(e)
     
     % Reanalyze - esp useful when very dark regions are removed from the
     % image, allowing the algorithm to find the lighter worms
-    [worm_mask, bg] = find_worms(I_gray, min_worm_size);
+    [worm_mask, bg, I_smooth] = find_worms(I_gray, min_worm_size);
     
     % Setup and review results
     % The function IMOVERLAY creates a mask-based image overlay. It takes input
@@ -143,65 +143,27 @@ end
 close gcf;
 
 
-
-% %% Estimate single worm size
-% wormdata = regionprops(bwlabel(worm_mask, 4), 'Area', 'PixelIdxList');
-% worm_areas = [wormdata.Area];
-% worm_size = median(worm_areas(worm_areas<=max_worm_size));
-% 
-% %% Estimate number of worms in image
-% num_worms = round(sum(worm_mask(:))/worm_size);
-
-%% Debug output
-if (debug)
-    
-    % Debug image of all pixels considered worms
-    overlay2 = imoverlay(image.data, worm_mask, [.3 1 .3]);
-    
-    % Single worm image for debugging
-    single_worms = false(size(worm_mask));
-    single_worms(vertcat(wormdata(worm_areas<max_worm_size).PixelIdxList)) = true;
-    RGB_label = label2rgb(bwlabel(single_worms,4), @lines, 'k', 'shuffle');
-    
-    % Display images and debug info
-    fprintf('Estimated size of one worm: %.2f\n', worm_size);
-    fprintf('Estimated number of worms: %.0f\n', num_worms);
-    figure, imshow(RGB_label);
-    figure, imshow(overlay2);
-    figure, imshow(image.data);
-end
+% %% Debug output
+% if (debug)
+%     
+%     % Debug image of all pixels considered worms
+%     overlay2 = imoverlay(image.data, worm_mask, [.3 1 .3]);
+%     
+%     % Single worm image for debugging
+%     single_worms = false(size(worm_mask));
+%     single_worms(vertcat(wormdata(worm_areas<max_worm_size).PixelIdxList)) = true;
+%     RGB_label = label2rgb(bwlabel(single_worms,4), @lines, 'k', 'shuffle');
+%     
+%     % Display images and debug info
+%     fprintf('Estimated size of one worm: %.2f\n', worm_size);
+%     fprintf('Estimated number of worms: %.0f\n', num_worms);
+%     figure, imshow(RGB_label);
+%     figure, imshow(overlay2);
+%     figure, imshow(image.data);
+% end
 
 end
 
-
-% plot_fig function plots a subimage for manual review
-%
-%   [SUBPLOT_HANDLE, IMAGE_HANDLE] = plot_fig(image, loc) 
-%       Plots 'image' in a subplot at location loc
-function [of, im] = plot_fig(image, loc)
-of = subplot(1,2,loc); im = subimage(image);
-set(of,'xtick',[],'ytick',[]);
-p = get(of, 'pos');
-if loc==1
-    p(1) = p(1) - 0.05;
-    p(3) = p(3) + 0.1;
-    
-else
-    p(1) = p(1) - 0.05;
-    p(3) = p(3) + 0.1;
-    
-end
-set(of, 'pos', p);
-end
-
-
-function [f i] = plot_fig_2(image)
-f = figure('Visible', 'off');
-i = imshow(image);
-set(f, 'Position', get(0,'Screensize'));  % Maximize view
-title('Select regions to ignore, press <ESC> when done');
-set(f, 'Visible', 'on');
-end
 
 % find_worms function identifies dark worms in image
 %
@@ -210,33 +172,28 @@ end
 %       MASK = Logical matrix indicating pixels corresponding to dark areas
 %           (worms)
 %       BG = Esitmated background of image (from tophat transform)
-function [mask, bg] = find_worms(image, min_worm_size)
+function [mask, bg, I_smooth] = find_worms(image, min_worm_size)
 
 %% Complement of image
 I_comp = imcomplement(image);
 
 %% BG Substract
-I_bsub = imtophat(I_comp,strel('disk',15));
+I_bsub = imtophat(I_comp,strel('disk',5));
 bg = imcomplement(I_comp - I_bsub);
 
-%% Enhance
+%% Noise removal
+I_smooth = wiener2(I_bsub,[5 5]);
 
-% Noise removal
-I_adj = wiener2(I_bsub,[5 5]);
-
-% Gamma correction
-I_adj = imadjust(I_adj, [], [], 1.2);
-
-%% Global image threshold using Otsu's method
-threshold = graythresh(I_adj);
-threshold = max(threshold,.04); % Sanity check on threshold
-bw = im2bw(I_adj, threshold);
+%% Thresholding
+% Grayscale image conversion
+I_gray = mat2gray(I_smooth);
+threshold = median(I_gray(:))*3;
+bw = im2bw(I_gray, threshold);
 
 %% Morphologically open binary image (remove small objects) < min_worm_size
-%   Determine connected components (4 pixel neighborhood)
+%   Determine connected components (8 pixel neighborhood)
 %   Compute area of each component
 %   Remove those below specified value
-mask = bwareaopen(bw, min_worm_size, 4);
-
+mask = bwareaopen(bw, min_worm_size, 8);
 
 end
