@@ -25,6 +25,9 @@ function summary_results = count_worms_directory(varargin)
 %       area_width - Width of the area around each treatment (in pixels)
 %           default = 300
 %       split_total - If true, split total image into four smaller images
+%           default = 1
+%       use_previous = If true, attempt to use previously generated results
+%           default = 0
 %       debug - if true then output debug info
 
 
@@ -35,6 +38,7 @@ p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be disc
 p.addOptional('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
 p.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
 p.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
+p.addParamValue('use_previous',0,@isnumeric); % If true, use previous results if found
 p.addParamValue('debug',0,@isnumeric);
 p.parse(varargin{:});
 
@@ -54,47 +58,27 @@ summary_results(1,:) = col_headings;
 
 for i=1:num_images
     t = regexpi(plate_images(i).name, '([A-Za-z0-9]+)_T([A-Za-z0-9-]+)_([A-Za-z0-9]+).png', 'tokens');
-    plate_results = count_worms_plate(...
-        [input_dir filesep plate_images(i).name], ...
-        'minsize', p.Results.minsize, ...
-        'maxsize', p.Results.maxsize, ...
-        'area_width', p.Results.area_width, ...
-        'split_total', p.Results.split_total, ...
-        'debug', p.Results.debug);
-    ci = (plate_results{3} - plate_results{2}) / (plate_results{5} - plate_results{4});
-    summary_results(i+1,:) = [t{1} plate_results ci];
+    [PATHSTR,NAME,EXT,VERSN] = fileparts(plate_images(i).name);  %#ok<ASGLU>
+    data_path = [input_dir filesep PATHSTR filesep NAME '_results'];
+    [s,mess,messid] = mkdir(data_path);
+    data_filename = fullfile(data_path, [NAME '_data.mat' VERSN]); 
+
+    %% Get Worm Counts
+    if exist(data_filename, 'file') && p.Results.use_previous
+        load(data_filename);
+        display(sprintf('Using previously generated counts for %s', NAME))
+    else
+        plate_results = count_worms_plate(...
+            [input_dir filesep plate_images(i).name], ...
+            'minsize', p.Results.minsize, ...
+            'maxsize', p.Results.maxsize, ...
+            'area_width', p.Results.area_width, ...
+            'split_total', p.Results.split_total, ...
+            'debug', p.Results.debug);
+        save(data_filename, 'plate_results');
+    end
+    summary_results(i+1,:) = [t{1} plate_results.worm_size plate_results.eth plate_results.but plate_results.ori plate_results.tot plate_results.ci];
 end
 
 cellwrite([input_dir filesep 'worm_counts.csv'],summary_results,',','wt');
 end
-
-
-%% OLD CODE
-
-% but_images = dir([input_dir filesep 'but*.png']);
-% trials = [];
-% for i=1:size(but_images,1)
-%     t = regexpi(but_images(i).name, 'but([0-9]+).png', 'tokens');
-%     n = str2double(t{1});
-%     trials = [trials, n];
-% end
-% 
-% disp(['Found ' num2str(size(trials,2)) ' trials in ''' input_dir '''']);
-% 
-% all_results = {};
-% summary_results = {'Trial', 'Eth', 'But', 'Ori', 'Tot'};
-% types = {'eth', 'but', 'ori', 'tot'};
-% for i=1:size(trials,2)
-%     trial_results = {trials(i)};
-%     for t=1:size(types,2)
-%         disp([types{t} num2str(trials(i))]);
-%         [num_worms, worm_size] = count_worms_image([input_dir filesep types{t} num2str(trials(i)) '.png'], 'minsize', min_worm_size, 'maxsize', max_worm_size);
-%         all_results = vertcat(all_results, {types{t}, i, worm_size, num_worms});
-%         trial_results = horzcat(trial_results, num_worms);
-%     end
-%     summary_results = vertcat(summary_results, trial_results);
-% end
-% 
-% cellwrite([input_dir filesep 'worm_counts_stats.csv'],all_results,',','wt');
-% cellwrite([input_dir filesep 'worm_counts_summary.csv'],summary_results,',','wt');
-% end

@@ -98,24 +98,26 @@ end
 %review_fig = figure('Name', names.filename,'MenuBar','none','ToolBar','none');
 review_fig = figure('Visible', 'off');
 review_ax = gca;
-%plot_fig(image.data, 1);
-%title('Original Image');
+plot_fig(image.data, 1);
+title('Original Image');
 
 % Find worms
 [worm_mask, bg] = find_worms(I_gray, min_worm_size);
 
 % Show review image
 reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
-%subplot(1,2,2);
-%[of, h_im] = plot_fig(reviewimg, 2);
-%[of, h_im] = plot_fig_2(reviewimg);
-h_im = imshow(reviewimg, 'Parent', review_ax);
-set(gcf, 'Position', get(0,'Screensize'));  % Maximize view
-%truesize(review_fig); % 100% size view
-%movegui(review_fig,'center')
+[of, h_im] = plot_fig(reviewimg, 2);
 title('Select regions to ignore, press <ESC> when done');
-set(review_fig, 'Visible', 'on')
+truesize(review_fig); % 100% size view
+movegui(review_fig,'center')
+
+%h_im = imshow(reviewimg, 'Parent', review_ax);
+%set(review_fig, 'Position', get(0,'Screensize'));  % Maximize view
+%title('Select regions to ignore, press <ESC> when done');
+%set(review_fig, 'Visible', 'on')
+
 e = imrect(gca);
+
 
 %% Looping manual review
 while ~isempty(e)
@@ -135,9 +137,12 @@ while ~isempty(e)
     % MatLab Central -
     % http://www.mathworks.com/matlabcentral/fileexchange/10502
     reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
-    %[of, h_im] = plot_fig(reviewimg, 2);
-    h_im = imshow(reviewimg, 'Parent', review_ax);
-    title('Select regions to ignore, press <ESC> when done');
+    
+    [of, h_im] = plot_fig(reviewimg, 2);
+    
+    %h_im = imshow(reviewimg, 'Parent', review_ax);
+    %title('Select regions to ignore, press <ESC> when done');
+    
     e = imrect(gca);
 end
 close gcf;
@@ -196,4 +201,25 @@ bw = im2bw(I_gray, threshold);
 %   Remove those below specified value
 mask = bwareaopen(bw, min_worm_size, 8);
 
+end
+
+
+% plot_fig function plots a subimage for manual review
+%
+%   [SUBPLOT_HANDLE, IMAGE_HANDLE] = plot_fig(image, loc) 
+%       Plots 'image' in a subplot at location loc
+function [of, im] = plot_fig(image, loc)
+of = subplot(1,2,loc); im = subimage(image);
+set(of,'xtick',[],'ytick',[]);
+p = get(of, 'pos');
+if loc==1
+    p(1) = p(1) - 0.05;
+    p(3) = p(3) + 0.1;
+    
+else
+    p(1) = p(1) - 0.05;
+    p(3) = p(3) + 0.1;
+    
+end
+set(of, 'pos', p);
 end

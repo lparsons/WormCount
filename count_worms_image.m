@@ -88,14 +88,21 @@ else
         if ( (isfield(i_p.Results,'filename')) && ~strcmp(i_p.Results.filename,''))
             fullfilename = i_p.Results.filename;
         else
-            [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
-                '*.*','All Files' },'Select Image File');
+            [FileName,PathName,FilterIndex] = uigetfile(...
+                {'*.jpg;*.tif;*.png;*.gif',...
+                'All Image Files';...
+                '*.*',...
+                'All Files' }, ...
+                'Select Image File');
             fullfilename = [PathName, filesep, FileName];
         end
         image.info = imfinfo( fullfilename );
         image.data = imread(fullfilename);
     end
-    worm_mask = find_worms_image(image.data, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', i_p.Results.debug);
+    worm_mask = find_worms_image(image.data, ...
+        'minsize', min_worm_size, ...
+        'maxsize', max_worm_size, ...
+        'debug', i_p.Results.debug);
 end
 
 
@@ -114,7 +121,11 @@ num_worms = round(sum(worm_mask(:))/worm_size);
 if (debug)
     
     % Debug image of all pixels considered worms
-    overlay2 = imoverlay(image.data, worm_mask, [.3 1 .3]);
+    if exist('image', 'var')
+        overlay2 = imoverlay(image.data, worm_mask, [.3 1 .3]);
+    else
+        overlay2 = worm_mask;
+    end
     
     % Single worm image for debugging
     single_worms = false(size(worm_mask));
@@ -126,7 +137,9 @@ if (debug)
     fprintf('Estimated number of worms: %.0f\n', num_worms);
     figure, imshow(RGB_label);
     figure, imshow(overlay2);
-    figure, imshow(image.data);
+    if exist('image', 'var')
+        figure, imshow(image.data);
+    end
 end
 
 end

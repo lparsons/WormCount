@@ -1,7 +1,7 @@
 function plate_results = count_worms_plate(varargin)
 % COUNT_WORMS_PLATE analyzes an image of a full plate estimates worm count
 % for each of four locations on the plate
-%   
+%
 %   PLATE_RESULTS = count_worms_plate() allows gui
 %       selection of the pate image file to analyze.
 %
@@ -15,7 +15,7 @@ function plate_results = count_worms_plate(varargin)
 %   Parameters:
 %       minsize - Regions smaller than min_size will be discarded
 %           default = 10
-%       maxsize - Regions smaller than max_size will be used to determine 
+%       maxsize - Regions smaller than max_size will be used to determine
 %            the size of a single worm
 %           default = 40
 %       area_width - Width of the area around each treatment (in pixels)
@@ -59,8 +59,8 @@ catch e1
 end
 
 p.parse(varargin{:});
-min_worm_size = p.Results.minsize; 
-max_worm_size = p.Results.maxsize; 
+min_worm_size = p.Results.minsize;
+max_worm_size = p.Results.maxsize;
 
 %% Select File
 if ( (isfield(p.Results,'filename')) && ~strcmp(p.Results.filename,''))
@@ -70,6 +70,11 @@ else
         '*.*','All Files' },'Select Image File');
     fullfilename = [PathName, filesep, FileName];
 end
+[PATHSTR,NAME,EXT,VERSN] = fileparts(fullfilename);
+data_path = [PATHSTR filesep NAME '_results'];
+[s,mess,messid] = mkdir(data_path);
+image_overlay_filename = fullfile(data_path, [NAME '_overlay.png' VERSN]);
+data_filename = fullfile(data_path, [NAME '_data.mat' VERSN]);
 
 %% Read in image
 image.info = imfinfo( fullfilename );
@@ -155,12 +160,12 @@ end
 
 %% Count worms on total image
 [total_num_worms, total_worm_size] = count_worms_image('worm_mask', full_mask, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
-all_results = {'tot', total_worm_size, total_num_worms};
+plate_results.worm_size = total_worm_size;
+plate_results.tot = total_num_worms;
 
-%% For each treatment, analyze area around each selected center
-plate_results = {};
-imshow(imoverlay(masked_total, bwperim(full_mask), [0 .5 0]))
-set(gcf, 'Position', get(0,'Screensize')); % Maximize figure
+%% For each treatment, analyze area around each selected center, generate overlay summary
+overlay_figure = figure('Visible', 'off');
+imshow(imoverlay(masked_total, bwperim(full_mask), [0 .5 0]));
 for t=1:size(types,2)
     xy = selected_points(t,:);
     box = [xy(1)-(roi_width/2) xy(2)-(roi_width/2) roi_width roi_width];
@@ -168,12 +173,44 @@ for t=1:size(types,2)
     region_mask = createMask(region_handle);
     delete(region_handle)
     region_worm_mask = region_mask & full_mask;
-    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'avg_worm_size', total_worm_size, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
-    all_results = vertcat(all_results, {types{t}, worm_size, num_worms});
-    plate_results = horzcat(plate_results, num_worms);
+    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'avg_worm_size', total_worm_size, 'minsize', min_worm_size, 'maxsize', max_worm_size);
+    plate_results.(types{t}) = num_worms;
     rectangle('Position', box, 'Curvature', [1,1], 'EdgeColor', 'r')
-    text(xy(1), xy(2), [types{t}, '-', num2str(num_worms)], 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center')
+    text(xy(1), xy(2), [types{t}, ' = ', num2str(num_worms)], 'BackgroundColor', 'none', 'VerticalAlignment', 'middle', 'HorizontalAlignment', 'center')
 end
-text(floor(size(masked_total,1)/2), 30, ['Total -', num2str(total_num_worms)], 'BackgroundColor', [.8 .7 .7], 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center')
 
-plate_results = [total_worm_size, plate_results, total_num_worms];
+plate_results.ci = chemotaxis_index(plate_results);
+
+title_text = sprintf('Total = %s, CI = %s, Worm size = %s', ...
+    num2str(total_num_worms), ...
+    num2str(plate_results.ci), ...
+    num2str(plate_results.worm_size));
+
+text(floor(size(masked_total,1)/2), ...
+    5, ...
+    title_text, ...
+    'BackgroundColor', [.8 .7 .7], ...
+    'VerticalAlignment', 'top', ...
+    'HorizontalAlignment', 'center' ...
+    )
+
+% Print Overlay Summary Figure
+screen_DPI = get(0, 'ScreenPixelsPerInch');
+set(overlay_figure, 'Units', 'pixels', 'Position', [32, 32, size(masked_total, 2), size(masked_total, 1)]);
+set(gca, 'Units', 'normalized', 'Position', [0,0,1,1]);
+set(gca, 'Units', 'points');
+set(overlay_figure, 'Units', 'points', 'PaperUnits', 'points', 'PaperPositionMode', 'auto');
+print(overlay_figure, '-dpng', sprintf('-r%d', screen_DPI), image_overlay_filename);
+close(overlay_figure);
+end
+
+
+
+
+
+
+
+
+
+
+
