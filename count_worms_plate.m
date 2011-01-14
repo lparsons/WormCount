@@ -102,7 +102,7 @@ masked_total = image.data;
 masked_total(~mask) = median(image.data(mask));
 
 % Crop image
-mask_props = regionprops(mask, 'BoundingBox');
+mask_props = regionprops(bwlabel(mask), 'BoundingBox');
 masked_total = imcrop(masked_total, mask_props.BoundingBox);
 image_handle = imshow(masked_total);
 set(plate_fig, 'Position', get(0,'Screensize')); % Maximize figure

@@ -84,7 +84,7 @@ min_worm_size = i_p.Results.minsize;
 max_worm_size = i_p.Results.maxsize;
 
 % Set Highlight Color
-highlightColor = [0 .5 0];
+highlightColor = [1 0 0];
 
 %% Convert to grayscale
 if ndims(image.data) > 2
