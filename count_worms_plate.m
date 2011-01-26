@@ -23,6 +23,7 @@ function plate_results = count_worms_plate(varargin)
 %       split_total - If true, split total image into four smaller images
 %       debug - if true then output debug info
 
+%% Setup Parsers
 % Image specified
 p1 = inputParser;
 p1.FunctionName = 'count_worms_plate';
@@ -41,6 +42,7 @@ p2.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each
 p2.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p2.addParamValue('debug',0,@isnumeric);
 
+%% Parse Inputs
 try
     p1.parse(varargin{:})
     p = p1;
@@ -77,9 +79,11 @@ image_overlay_filename = fullfile(data_path, [NAME '_overlay.png' VERSN]);
 data_filename = fullfile(data_path, [NAME '_data.mat' VERSN]);
 
 %% Read in image
+tic
 image.info = imfinfo( fullfilename );
 image.data = imread(fullfilename);
-
+fprintf('Reading %s... ', fullfilename);
+toc
 %% Mask dish
 plate_fig = figure();
 image_handle = imshow(image.data);
@@ -91,11 +95,16 @@ setFixedAspectRatioMode(h, true)
 position = wait(h);
 mask = createMask(h,image_handle);
 
-% Complement of image
-I_comp = imcomplement(image.data);
-% BG Substract
-I_bsub = imtophat(I_comp,strel('disk',15));
-bg = imcomplement(I_comp - I_bsub);
+%% Crop and Adjust
+% % Complement of image
+% I_comp = imcomplement(image.data);
+% % BG Substract
+% I_bsub = imtophat(I_comp,strel('disk',15));
+% I_bg_corrected = imcomplement(I_bsub);
+% bg = imcomplement(I_comp - I_bsub);
+
+% % Enchance
+% I_enchanced = imadjust(I_bg_corrected, [],[],2);
 
 % Grey out unmasked area
 masked_total = image.data;
@@ -107,7 +116,7 @@ masked_total = imcrop(masked_total, mask_props.BoundingBox);
 image_handle = imshow(masked_total);
 set(plate_fig, 'Position', get(0,'Screensize')); % Maximize figure
 
-%% Setup total image(s)
+% Setup total image(s)
 cropped_images.tot = {};
 if p.Results.split_total
     w = floor(size(masked_total,1)/2);
@@ -144,7 +153,7 @@ close(plate_fig)
 masks = {};
 for i=1:size(cropped_images.tot,2)
     img = cropped_images.tot{i};
-    masks{i} = find_worms_image(img, 'minsize', min_worm_size, 'maxsize', max_worm_size, 'debug', p.Results.debug);
+    masks{i} = find_worms_image(img, min_worm_size, max_worm_size, 'debug', p.Results.debug);
 end
 full_mask = false(size(masked_total));
 if p.Results.split_total
@@ -181,6 +190,7 @@ end
 
 plate_results.ci = chemotaxis_index(plate_results);
 
+%% Save overlay image
 title_text = sprintf('Total = %s, CI = %s, Worm size = %s', ...
     num2str(total_num_worms), ...
     num2str(plate_results.ci), ...
@@ -201,6 +211,7 @@ set(gca, 'Units', 'normalized', 'Position', [0,0,1,1]);
 set(gca, 'Units', 'points');
 set(overlay_figure, 'Units', 'points', 'PaperUnits', 'points', 'PaperPositionMode', 'auto');
 print(overlay_figure, '-dpng', sprintf('-r%d', screen_DPI), image_overlay_filename);
+
 close(overlay_figure);
 end
 

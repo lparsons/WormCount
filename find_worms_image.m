@@ -2,19 +2,20 @@ function worm_mask = find_worms_image(varargin)
 % FIND_WORMS_IMAGE function analyzes an image and returns a mask indicating
 % worm positions
 %
-%   WORM_MASK = find_worms_image() allows gui selection of
+%   WORM_MASK = find_worms_image(minsize, maxsize) allows gui selection of
 %       image to analyze and allows the user to deselect erroneously
 %       identified regions.  When finished selecting regions, press escape
 %       to continue.
 %
-%   WORM_MASK = count_worms_images([filename OR image_data])
-%
-%   WORM_MASK = count_worms_images([filename OR image_data], minsize, maxsize)
 %       minsize - Regions smaller than min_size will be discarded
-%           default = 5
 %       maxsize - Regions smaller than max_size will be used to determine
 %            the size of a single worm
-%           default = 40
+%
+%   WORM_MASK = count_worms_images([filename OR image_data], minsize, maxsize)
+%       Specify either filename OR image_data
+%
+%       filename - specifies the name of an image file to process
+%       image_data - specifies numeric image data to process
 %
 %   WORM_MASK = count_worms_images([filename OR image_data], minsize, maxsize, debug)
 %       debug [0/1] flag outputs various image overlays
@@ -23,22 +24,22 @@ function worm_mask = find_worms_image(varargin)
 %% Parse arguments
 p1 = inputParser;
 p1.FunctionName = 'count_worms_image';
-p1.addOptional('image_data',0,@isnumeric);
-p1.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-p1.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
+p1.addRequired('image_data',@isnumeric);
+p1.addRequired('minsize',@isnumeric); % Regions smaller than this will be discarded
+p1.addRequired('maxsize',@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('debug',0,@isnumeric);
 
 p2 = inputParser;
 p2.FunctionName = 'count_worms_image';
-p2.addOptional('filename','',@ischar);
-p2.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-p2.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
+p2.addRequired('filename',@ischar);
+p2.addRequired('minsize',@isnumeric); % Regions smaller than this will be discarded
+p2.addRequired('maxsize',@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('debug',0,@isnumeric);
 
 p3 = inputParser;
 p3.FunctionName = 'count_worms_image';
-p3.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-p3.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
+p3.addRequired('minsize',@isnumeric); % Regions smaller than this will be discarded
+p3.addRequired('maxsize',@isnumeric); % Regions smaller than this will determine single worm size
 p3.addParamValue('debug',0,@isnumeric);
 
 try
@@ -101,8 +102,11 @@ review_ax = gca;
 plot_fig(image.data, 1);
 title('Original Image');
 
+% Enhance image
+I_enhanced = enhance_image(I_gray);
+
 % Find worms
-[worm_mask, bg] = find_worms(I_gray, min_worm_size);
+worm_mask = find_worms(I_enhanced, min_worm_size);
 
 % Show review image
 reviewimg = imoverlay(image.data, bwperim(worm_mask), highlightColor);
@@ -124,11 +128,16 @@ while ~isempty(e)
     
     % Replace selected regions with estimation of background
     mask = createMask(e,h_im);
-    I_gray(mask) = bg(mask);
+    %I_gray(mask) = bg(mask);
+    I_enhanced(mask) = median(I_enhanced(~mask));
     
     % Reanalyze - esp useful when very dark regions are removed from the
     % image, allowing the algorithm to find the lighter worms
-    [worm_mask, bg, I_smooth] = find_worms(I_gray, min_worm_size);
+    %[worm_mask, bg, I_smooth] = find_worms(I_gray, min_worm_size);
+    worm_mask= find_worms(I_enhanced, min_worm_size);
+    
+    % Remove roi region
+    worm_mask = worm_mask & ~mask;
     
     % Setup and review results
     % The function IMOVERLAY creates a mask-based image overlay. It takes input
@@ -169,6 +178,29 @@ close gcf;
 
 end
 
+% enchance_image function enhances images for worm detection
+%
+%   image = enhance_image(image) 
+function enhanced_image = enhance_image(image)
+
+%% Enchance
+%I_enhance = imadjust(image, [], [], 4);
+
+%% Complement of image
+I_comp = imcomplement(image);
+
+%% BG Substract
+I_bsub = imtophat(I_comp,strel('disk',10));
+%bg = imcomplement(I_comp - I_bsub);
+
+
+%% Noise removal
+%I_smooth = wiener2(I_enhance,[5 5]);
+
+enhanced_image = I_bsub;
+
+end
+
 
 % find_worms function identifies dark worms in image
 %
@@ -177,22 +209,14 @@ end
 %       MASK = Logical matrix indicating pixels corresponding to dark areas
 %           (worms)
 %       BG = Esitmated background of image (from tophat transform)
-function [mask, bg, I_smooth] = find_worms(image, min_worm_size)
+function mask = find_worms(image, min_worm_size)
 
-%% Complement of image
-I_comp = imcomplement(image);
-
-%% BG Substract
-I_bsub = imtophat(I_comp,strel('disk',5));
-bg = imcomplement(I_comp - I_bsub);
-
-%% Noise removal
-I_smooth = wiener2(I_bsub,[5 5]);
 
 %% Thresholding
 % Grayscale image conversion
-I_gray = mat2gray(I_smooth);
+I_gray = mat2gray(image);
 threshold = median(I_gray(:))*3;
+%threshold = median(I_gray(I_gray>0)) + std(I_gray(I_gray>0)) * 2.5;
 bw = im2bw(I_gray, threshold);
 
 %% Morphologically open binary image (remove small objects) < min_worm_size
