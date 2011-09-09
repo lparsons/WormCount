@@ -1,7 +1,7 @@
 function plate_results = count_worms_plate(varargin)
 % COUNT_WORMS_PLATE analyzes an image of a full plate estimates worm count
 % for each of four locations on the plate
-%
+%   
 %   PLATE_RESULTS = count_worms_plate() allows gui
 %       selection of the pate image file to analyze.
 %
@@ -15,10 +15,12 @@ function plate_results = count_worms_plate(varargin)
 %   Parameters:
 %       minsize - Regions smaller than min_size will be discarded
 %           default = 10
-%       maxsize - Regions smaller than max_size will be used to determine
+%       maxsize - Regions smaller than max_size will be used to determine 
 %            the size of a single worm
 %           default = 40
-%       area_width - Width of the area around each treatment (in pixels)
+%       origin_diameter - Diameter of the area considered the origin (in pixels)
+%           default = 150
+%       treatment_diameter - Diameter of the area considered for each treatment (in pixels)
 %           default = 300
 %       split_total - If true, split total image into four smaller images
 %       debug - if true then output debug info
@@ -30,7 +32,8 @@ p1.FunctionName = 'count_worms_plate';
 p1.addOptional('filename', '', @ischar);
 p1.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
 p1.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
-p1.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
+p1.addParamValue('origin_diameter',150,@isnumeric); % Diameter of area on plate for origin (in pixels)
+p1.addParamValue('treatment_diameter',300,@isnumeric); % Diameter of area on plate for each treatment (in pixels)
 p1.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p1.addParamValue('debug',0,@isnumeric);
 
@@ -38,7 +41,8 @@ p1.addParamValue('debug',0,@isnumeric);
 p2 = inputParser;
 p2.addParamValue('minsize',10,@isnumeric); % Regions smaller than this will be discarded
 p2.addParamValue('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
-p2.addParamValue('area_width',300,@isnumeric); % Width of area on plate for each treatment (in pixels)
+p2.addParamValue('origin_diameter',150,@isnumeric); % Diameter of area on plate for origin (in pixels)
+p2.addParamValue('treatment_diameter',300,@isnumeric); % Diameter of area on plate for each treatment (in pixels)
 p2.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
 p2.addParamValue('debug',0,@isnumeric);
 
@@ -61,8 +65,8 @@ catch e1
 end
 
 p.parse(varargin{:});
-min_worm_size = p.Results.minsize;
-max_worm_size = p.Results.maxsize;
+min_worm_size = p.Results.minsize; 
+max_worm_size = p.Results.maxsize; 
 
 %% Select File
 if ( (isfield(p.Results,'filename')) && ~strcmp(p.Results.filename,''))
@@ -133,8 +137,12 @@ end
 %% Choose area for each treatment from plate image
 types = {'eth', 'but', 'ori'};
 selected_points = zeros(size(types,2),2);
-roi_width = p.Results.area_width;
 for t=1:size(types,2)
+    if (strcmpi('ori', types{t}) == 1)
+        roi_width = p.Results.origin_diameter;
+    else
+        roi_width = p.Results.treatment_diameter;
+    end
     disp(types{t})
     title(sprintf('Select center of %s area', types{t}))
     [x,y] = ginput(1);
@@ -176,6 +184,11 @@ plate_results.tot = total_num_worms;
 overlay_figure = figure('Visible', 'off');
 imshow(imoverlay(masked_total, bwperim(full_mask), [0 .5 0]));
 for t=1:size(types,2)
+    if (strcmpi('ori', types{t}) == 1)
+        roi_width = p.Results.origin_diameter;
+    else
+        roi_width = p.Results.treatment_diameter;
+    end
     xy = selected_points(t,:);
     box = [xy(1)-(roi_width/2) xy(2)-(roi_width/2) roi_width roi_width];
     region_handle = imellipse(gca, box);
