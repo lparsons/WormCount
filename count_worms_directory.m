@@ -61,10 +61,10 @@ summary_results(1,:) = col_headings;
 
 for i=1:num_images
     t = regexpi(plate_images(i).name, '([A-Za-z0-9]+)_T([A-Za-z0-9-]+)_([A-Za-z0-9]+).png', 'tokens');
-    [PATHSTR,NAME,EXT,VERSN] = fileparts(plate_images(i).name);  %#ok<ASGLU>
+    [PATHSTR,NAME,EXT] = fileparts(plate_images(i).name);   %#ok<NASGU>
     data_path = [input_dir filesep PATHSTR filesep NAME '_results'];
-    [s,mess,messid] = mkdir(data_path);
-    data_filename = fullfile(data_path, [NAME '_data.mat' VERSN]); 
+    [s,mess,messid] = mkdir(data_path); %#ok<ASGLU,NASGU>
+    data_filename = fullfile(data_path, [NAME '_data.mat']); 
 
     %% Get Worm Counts
     if exist(data_filename, 'file') && p.Results.use_previous

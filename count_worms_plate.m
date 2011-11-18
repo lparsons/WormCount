@@ -76,17 +76,21 @@ else
         '*.*','All Files' },'Select Image File');
     fullfilename = [PathName, filesep, FileName];
 end
-[PATHSTR,NAME,EXT,VERSN] = fileparts(fullfilename);
+[PATHSTR,NAME,EXT] = fileparts(fullfilename); %#ok<NASGU>
 data_path = [PATHSTR filesep NAME '_results'];
-[s,mess,messid] = mkdir(data_path);
-image_overlay_filename = fullfile(data_path, [NAME '_overlay.png' VERSN]);
-data_filename = fullfile(data_path, [NAME '_data.mat' VERSN]);
+[s,mess,messid] = mkdir(data_path); %#ok<NASGU,ASGLU>
+image_overlay_filename = fullfile(data_path, [NAME '_overlay.png']);
+data_filename = fullfile(data_path, [NAME '_data.mat']);
 
 %% Read in image
 tic
+fprintf('Reading %s... ', fullfilename);
 image.info = imfinfo( fullfilename );
 image.data = imread(fullfilename);
-fprintf('Reading %s... ', fullfilename);
+% If truecolor image, convert to grayscale
+if size(size(image.data),2)>2
+    image.data = rgb2gray(image.data);
+end
 toc
 %% Mask dish
 plate_fig = figure();
