@@ -1,0 +1,29 @@
+WormCount
+=========
+Evaluates images of a plate of worms and estimates the number of worms present.
+Calcualtes the chemotaxis index of experiments.
+
+
+Usage
+=====
+Ensure that the count_worms_vX.X directory is in your MATLAB PATH.
+
+Count worms for an entire experiment (directory)
+------------------------------------------------
+count_data = count_worms_directory() allows gui
+   selection of the directory to analyze.  The directory must contain
+   sets of whole plate images for each strain, time point, and
+   replicate. File names must conform for the following specification:
+
+       [strain]_T[time]_[replicate].png
+
+Calculate cheomotaxis index
+----------------------------   
+chemotaxis_data = chemotaxis_index(count_data)
+
+    count_data is a struct with four fields:
+        total, ori, but, eth
+
+    CHEMOTAXIS_INDEX = (but-eth)/(total-ori)
+
+
