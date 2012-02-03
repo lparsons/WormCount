@@ -3,6 +3,8 @@ WormCount
 Evaluates images of a plate of worms and estimates the number of worms present.
 Calcualtes the chemotaxis index of experiments.
 
+Source available at https://bitbucket.org/lance_parsons/wormcount
+
 
 Usage
 =====
@@ -27,3 +29,16 @@ chemotaxis_data = chemotaxis_index(count_data)
     CHEMOTAXIS_INDEX = (but-eth)/(total-ori)
 
 
+License
+=======
+This software was developed at the Lewis-Sigler Institute of Integrative
+Genomics at Princeton University, Princeton, NJ, USA
+Licensed under the BSD 2-Clause License http://www.opensource.org/licenses/BSD-2-Clause
+
+The cellwrite.m function was derived from source available at 
+http://francisbarnhart.com/blog/2005/01/19/matlab_pain/
+
+The imoverlay.m function is covered by the BSD License 
+(see LICENSE_imoverlay.txt).  It was written by Steve Eddins and obtained 
+from MATLAB Central File Exchange 
+http://www.mathworks.com/matlabcentral/fileexchange/10502
