@@ -3,8 +3,8 @@
 %   Licensed under the BSD 2-Clause License 
 %   http://www.opensource.org/licenses/BSD-2-Clause
 
-function summary_results = count_worms_directory(varargin)
-% COUNT_WORMS_DIRECTORY analyzes sets of images and estimates worm count
+function summary_results = count_worms_directory_grid(varargin)
+% COUNT_WORMS_DIRECTORY_GRID analyzes sets of images and estimates worm count
 %   
 %   SUMMARY_RESULTS = count_worms_directory() allows gui
 %       selection of the directory to analyze.  The directory must contain
@@ -13,7 +13,7 @@ function summary_results = count_worms_directory(varargin)
 %
 %           [strain]_T[time]_[replicate].png
 %
-%       SUMMARY_RESULTS is a Nx9 cell array with the counts for each trial
+%       SUMMARY_RESULTS is a NxM cell array with the counts for each trial
 %           This is saved in a file named 'worm_counts.csv' in the
 %           directory specified.
 %
@@ -23,16 +23,31 @@ function summary_results = count_worms_directory(varargin)
 %
 %   Parameters:
 %       minsize - Regions smaller than min_size will be discarded
-%           default = 10
+%           default = 5
 %       maxsize - Regions smaller than max_size will be used to determine 
 %            the size of a single worm
-%           default = 40
-%       origin_diameter - Diameter of the area considered the origin (in pixels)
-%           default = 150
-%       treatment_diameter - Diameter of the area considered for each treatment (in pixels)
-%           default = 300
-%       split_total - If true, split total image into four smaller images
-%           default = 1
+%           default = 30
+%       grid_cols - Number of columns in the grid
+%           default = 6
+%       grid_rows - Number of rows in the grid
+%           default = 6
+%       category_grid - Struct with fields for each category
+%           Each field contains N x 2 matrix with x and y coords for
+%               the grid positions belonging to that category
+%           default = struct(...
+%                 'left', ...
+%                 [1,1; 2,1; 3,1; 4,1; 5,1; 6,1 ...
+%                 ;1,2; 2,2; 3,2; 4,2; 5,2; 6,2], ...
+%                 'center_top_bottom', ...
+%                 [1,3; 2,3; 5,3; 6,3 ...
+%                 ;1,4; 2,4; 5,4; 6,4], ...
+%                 'center_center', ...
+%                 [3,3; 4,3 ...
+%                 ;3,4; 4,4], ...
+%                 'right', ...
+%                 [1,5; 2,5; 3,5; 4,5; 5,5; 6,5 ...
+%                 ;1,6; 2,6; 3,6; 4,6; 5,6; 6,6] ...
+%                 );
 %       use_previous = If true, attempt to use previously generated results
 %           default = 0
 %       debug - if true then output debug info
@@ -43,14 +58,14 @@ addpath(genpath([pathstr filesep 'lib']));
 p = inputParser;
 p.FunctionName = 'count_worms_directory';
 p.addOptional('inputDir', '', @isdir);
-p.addOptional('minsize',10,@isnumeric); % Regions smaller than this will be discarded
-p.addOptional('maxsize',40,@isnumeric); % Regions smaller than this will determine single worm size
-p.addParamValue('origin_diameter',150,@isnumeric); % Diameter of area on plate for origin (in pixels)
-p.addParamValue('treatment_diameter',300,@isnumeric); % Diameter of area on plate for each treatment (in pixels)
+p.addOptional('minsize',5,@isnumeric); % Regions smaller than this will be discarded
+p.addOptional('maxsize',30,@isnumeric); % Regions smaller than this will determine single worm size
+p.addParamValue('grid_cols',6,@isnumeric); % Number of columns in the grid
+p.addParamValue('grid_rows',6,@isnumeric); % Number of rows in the grid
+p.addParamValue('category_grid',default_category_grid(),@isstruct); % Struct with fields for each category
 p.addParamValue('split_total',1,@isnumeric); % If true, split total image into four smaller images
-p.addParamValue('categories', {'Eth', 'But', 'Ori'}, @isstruct);
 p.addParamValue('use_previous',0,@isnumeric); % If true, use previous results if found
-p.addParamValue('debug',0,@isnumeric);
+p.addParamValue('debug',false,@islogical);
 p.parse(varargin{:});
 
 % If directory not specified, allow user to choose the directory
@@ -63,7 +78,7 @@ end
 % Get list of files
 plate_images = dir([input_dir filesep '*.png']);
 num_images = size(plate_images,1);
-col_headings = {'Strain', 'Time', 'Replicate', 'Est. Worm Size', 'Eth', 'But', 'Ori', 'Tot', 'CI'};
+col_headings = [{'Strain', 'Time', 'Replicate', 'Est. Worm Size'} fieldnames(p.Results.category_grid)'];
 summary_results{num_images+1,size(col_headings,2)} = [];
 summary_results(1,:) = col_headings;
 
@@ -79,22 +94,29 @@ for i=1:num_images
         load(data_filename);
         display(sprintf('Using previously generated counts for %s', NAME))
     else
-        plate_results = count_worms_plate(...
-            [input_dir filesep plate_images(i).name], ...
+        [worm_count, worm_size] = count_worms_grid([input_dir filesep plate_images(i).name], ...
+            p.Results.grid_cols, p.Results.grid_rows, ...
             'minsize', p.Results.minsize, ...
             'maxsize', p.Results.maxsize, ...
-            'origin_diameter', p.Results.origin_diameter, ...
-            'treatment_diameter', p.Results.treatment_diameter, ...
-            'split_total', p.Results.split_total, ...
             'debug', p.Results.debug);
+        plate_results = sum_grid(worm_count, p.Results.category_grid);
+        plate_results.worm_size = worm_size;
+        %plate_results.ci = (plate_results.left - plate_results.right) / ...
+        %    (plate_results.left + plate_results.right + plate_results.center_top_bottom);
         save(data_filename, 'plate_results');
     end
     if isempty(t)
         exp_info = [{i} {''} {''}];
     else
         exp_info = t{1};
-    end   
-    summary_results(i+1,:) = [exp_info plate_results.worm_size plate_results.eth plate_results.but plate_results.ori plate_results.tot plate_results.ci];
+    end
+    results = [exp_info plate_results.worm_size];
+    categories = fieldnames(p.Results.category_grid);
+    for c = 1:size(categories,1)
+        category = categories{c};
+        results = [results plate_results.(category)];
+    end
+    summary_results(i+1,:) = results;
 end
 
 cellwrite([input_dir filesep 'worm_counts.csv'],summary_results,',','wt');

@@ -30,6 +30,10 @@ function plate_results = count_worms_plate(varargin)
 %       split_total - If true, split total image into four smaller images
 %       debug - if true then output debug info
 
+%%
+[pathstr, name, ext] = fileparts(mfilename('fullpath')) ; %#ok<NASGU,ASGLU>
+addpath(genpath([pathstr filesep 'lib']));
+
 %% Setup Parsers
 % Image specified
 p1 = inputParser;
@@ -78,7 +82,7 @@ if ( (isfield(p.Results,'filename')) && ~strcmp(p.Results.filename,''))
     fullfilename = p.Results.filename;
 else
     [FileName,PathName,FilterIndex] = uigetfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
-        '*.*','All Files' },'Select Image File');
+        '*.*','All Files' },'Select Image File'); %#ok<NASGU>
     fullfilename = [PathName, filesep, FileName];
 end
 [PATHSTR,NAME,EXT] = fileparts(fullfilename); %#ok<NASGU>
@@ -124,7 +128,7 @@ masked_total = image.data;
 masked_total(~mask) = median(image.data(mask));
 
 % Crop image
-mask_props = regionprops(bwlabel(mask), 'BoundingBox');
+mask_props = regionprops(logical(mask), 'BoundingBox');
 masked_total = imcrop(masked_total, mask_props.BoundingBox);
 image_handle = imshow(masked_total);
 set(plate_fig, 'Position', get(0,'Screensize')); % Maximize figure
@@ -204,7 +208,7 @@ for t=1:size(types,2)
     region_mask = createMask(region_handle);
     delete(region_handle)
     region_worm_mask = region_mask & full_mask;
-    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'avg_worm_size', total_worm_size, 'minsize', min_worm_size, 'maxsize', max_worm_size);
+    [num_worms, worm_size] = count_worms_image('worm_mask', region_worm_mask, 'avg_worm_size', total_worm_size, 'minsize', min_worm_size, 'maxsize', max_worm_size); %#ok<NASGU>
     plate_results.(types{t}) = num_worms;
     rectangle('Position', box, 'Curvature', [1,1], 'EdgeColor', 'r')
     text(xy(1), xy(2), [types{t}, ' = ', num2str(num_worms)], 'BackgroundColor', 'none', 'VerticalAlignment', 'middle', 'HorizontalAlignment', 'center')

@@ -29,6 +29,10 @@ function [num_worms, worm_size] = count_worms_image(varargin)
 %       debug [0/1] flag outputs various image overlays
 %            default = 0 (off)
 
+%%
+[pathstr, name, ext] = fileparts(mfilename('fullpath')) ; %#ok<NASGU,ASGLU>
+addpath(genpath([pathstr filesep 'lib']));
+
 %% Parse arguments
 p1 = inputParser;
 p1.FunctionName = 'count_worms_image';
@@ -85,7 +89,7 @@ max_worm_size = i_p.Results.maxsize;
 
 if isfield(i_p.Results,'worm_mask') && islogical(i_p.Results.worm_mask)
 
-    worm_mask = i_p.Results.worm_mask;
+    worm_mask = bwareaopen(i_p.Results.worm_mask,min_worm_size,8);
 else
     if ( isfield(i_p.Results,'image_data') && ~strcmp(i_p.Results.image_data,0))
         image.data = i_p.Results.image_data;

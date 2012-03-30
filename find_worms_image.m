@@ -26,23 +26,27 @@ function worm_mask = find_worms_image(varargin)
 %       debug [0/1] flag outputs various image overlays
 %            default = 0 (off)
 
+%%
+[pathstr, name, ext] = fileparts(mfilename('fullpath')) ; %#ok<NASGU,ASGLU>
+addpath(genpath([pathstr filesep 'lib']));
+
 %% Parse arguments
 p1 = inputParser;
-p1.FunctionName = 'count_worms_image';
+p1.FunctionName = 'find_worms_image';
 p1.addRequired('image_data',@isnumeric);
 p1.addRequired('minsize',@isnumeric); % Regions smaller than this will be discarded
 p1.addRequired('maxsize',@isnumeric); % Regions smaller than this will determine single worm size
 p1.addParamValue('debug',0,@isnumeric);
 
 p2 = inputParser;
-p2.FunctionName = 'count_worms_image';
+p2.FunctionName = 'find_worms_image';
 p2.addRequired('filename',@ischar);
 p2.addRequired('minsize',@isnumeric); % Regions smaller than this will be discarded
 p2.addRequired('maxsize',@isnumeric); % Regions smaller than this will determine single worm size
 p2.addParamValue('debug',0,@isnumeric);
 
 p3 = inputParser;
-p3.FunctionName = 'count_worms_image';
+p3.FunctionName = 'find_worms_image';
 p3.addRequired('minsize',@isnumeric); % Regions smaller than this will be discarded
 p3.addRequired('maxsize',@isnumeric); % Regions smaller than this will determine single worm size
 p3.addParamValue('debug',0,@isnumeric);

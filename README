@@ -10,14 +10,31 @@ Usage
 =====
 Ensure that the count_worms_vX.X directory is in your MATLAB PATH.
 
+Count worms for entire experiment (directory)
+SQUARE GRID PLATES
+
+
 Count worms for an entire experiment (directory)
-------------------------------------------------
+================================================
+
+Square Grid Plates (BETA)
+------------------
+count_data = count_worms_directory_grid() allows gui
+   selection of the directory to analyze.  The directory must contain
+   sets of whole plate images for each strain, time point, and
+   replicate. File names must conform for the following specification:
+
+       [strain]_T[time]_[replicate].png
+
+Round Plates
+------------
 count_data = count_worms_directory() allows gui
    selection of the directory to analyze.  The directory must contain
    sets of whole plate images for each strain, time point, and
    replicate. File names must conform for the following specification:
 
        [strain]_T[time]_[replicate].png
+
 
 Calculate cheomotaxis index
 ----------------------------   
@@ -31,14 +48,22 @@ chemotaxis_data = chemotaxis_index(count_data)
 
 License
 =======
-This software was developed at the Lewis-Sigler Institute of Integrative
-Genomics at Princeton University, Princeton, NJ, USA
+This software was developed by Lance Parsons at the Lewis-Sigler Institute
+of Integrative Genomics at Princeton University, Princeton, NJ, USA
 Licensed under the BSD 2-Clause License http://www.opensource.org/licenses/BSD-2-Clause
 
+Other Software
+--------------
 The cellwrite.m function was derived from source available at 
 http://francisbarnhart.com/blog/2005/01/19/matlab_pain/
 
 The imoverlay.m function is covered by the BSD License 
-(see LICENSE_imoverlay.txt).  It was written by Steve Eddins and obtained 
+(see lib/imoverlay/license.txt).  It was written by Steve Eddins and obtained 
 from MATLAB Central File Exchange 
 http://www.mathworks.com/matlabcentral/fileexchange/10502
+
+The intersections.m is Copyright (c) 2008, Douglas M. Schwarz
+See lib/intersections/LICENSE.txt
+
+The nesteredSortStruct functions are Copyright (c) 2010, Jake Hughey
+See lib/nestedSortStruct/LICENSE.txt

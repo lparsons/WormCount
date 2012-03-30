@@ -1,5 +1,7 @@
 % Write mixed data to csv file
-% Source: http://francisbarnhart.com/blog/2005/01/19/matlab_pain/
+% Original Source: http://francisbarnhart.com/blog/2005/01/19/matlab_pain/
+% Modified by Lance Parsons, Lewis-Sigler Institute for Integrative
+% Genomics, Princeton University, Princeton, NJ, USA
 function cellwrite(filename, cellarray, varargin)
 switch nargin
     case 2
