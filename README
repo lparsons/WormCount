@@ -10,15 +10,12 @@ Usage
 =====
 Ensure that the count_worms_vX.X directory is in your MATLAB PATH.
 
-Count worms for entire experiment (directory)
-SQUARE GRID PLATES
-
 
 Count worms for an entire experiment (directory)
-================================================
+------------------------------------------------
 
 Square Grid Plates (BETA)
-------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 count_data = count_worms_directory_grid() allows gui
    selection of the directory to analyze.  The directory must contain
    sets of whole plate images for each strain, time point, and
@@ -27,7 +24,7 @@ count_data = count_worms_directory_grid() allows gui
        [strain]_T[time]_[replicate].png
 
 Round Plates
-------------
+~~~~~~~~~~~~
 count_data = count_worms_directory() allows gui
    selection of the directory to analyze.  The directory must contain
    sets of whole plate images for each strain, time point, and

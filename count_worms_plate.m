@@ -125,7 +125,7 @@ mask = createMask(h,image_handle);
 
 % Grey out unmasked area
 masked_total = image.data;
-masked_total(~mask) = median(image.data(mask));
+masked_total(~mask) = median(double(image.data(mask)));
 
 % Crop image
 mask_props = regionprops(logical(mask), 'BoundingBox');

@@ -1,0 +1,24 @@
+WORMCOUNT Changelog
+===================
+
+version 0.8.1
+------------------
+* fixed issue when loading certain filetypes (mostly grayscale)
+* alternate thresholding method in cases where median pixel is 0 after tophat transform
+* support for grid images is still in beta
+
+version 0.8.beta
+----------------
+* intial attempt at analyzing square grid images
+* issues with worms that cross the grid boundaries (they are missed)
+* added appropriate licences and made repository public
+
+version 0.7.5
+-------------
+* fixed handling of truecolor images
+* updated to work with newer Matlab versions (fileparts command changed)
+
+version 0.7.4
+-------------
+* added support to set separate origin diameter
+

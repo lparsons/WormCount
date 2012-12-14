@@ -224,8 +224,13 @@ function mask = find_worms(image, min_worm_size)
 %% Thresholding
 % Grayscale image conversion
 I_gray = mat2gray(image);
-threshold = median(I_gray(:))*3;
-%threshold = median(I_gray(I_gray>0)) + std(I_gray(I_gray>0)) * 2.5;
+if median(I_gray(:)) == 0
+    %threshold = graythresh(I_gray)*3;
+    %threshold = median(I_gray(I_gray>0)) + std(I_gray(I_gray>0)) * 2.5;
+    threshold = median(I_gray(I_gray>0)) * 3;
+else
+    threshold = median(I_gray(:))*3;
+end
 bw = im2bw(I_gray, threshold);
 
 %% Morphologically open binary image (remove small objects) < min_worm_size
